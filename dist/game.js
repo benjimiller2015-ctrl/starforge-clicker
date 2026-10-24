@@ -1,16 +1,37 @@
 const catalog=[{name:'Reinforced pickaxe',icon:'⚒',desc:'+1 stardust per click',base:15,click:1,rate:0},{name:'Mining drone',icon:'⌘',desc:'+1 stardust per second',base:50,click:0,rate:1},{name:'Laser drill',icon:'ϟ',desc:'+8 stardust per second',base:350,click:0,rate:8},{name:'Orbital station',icon:'◎',desc:'+50 stardust per second',base:2000,click:0,rate:50},{name:'Star harvester',icon:'✦',desc:'+300 stardust per second',base:12000,click:0,rate:300}];
-const KEY='starforge-v1';let state={dust:0,total:0,owned:[0,0,0,0,0],saved:Date.now()};let storageOK=true;
-try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Number.isFinite(s.dust)&&s.dust>=0&&Number.isFinite(s.total)&&s.total>=s.dust&&Array.isArray(s.owned)&&s.owned.length===5&&s.owned.every(n=>Number.isInteger(n)&&n>=0&&n<10000)&&Number.isFinite(s.saved))state=s;}catch{}
-const labs=['Diamond edges','Drone intelligence','Focused optics','Station overclock','Stellar fusion'];
-state.research=Array.isArray(state.research)&&state.research.length===5&&state.research.every(n=>Number.isInteger(n)&&n>=0&&n<=10)?state.research:[0,0,0,0,0];
+const advancedEquipment=[
+ ['Comet catcher','☄',75000,1800,'Gravitational nets'],
+ ['Asteroid refinery','⬡',450000,10000,'Perfect extraction'],
+ ['Lunar colony','☾',2800000,55000,'Colony automation'],
+ ['Solar collector','☀',18000000,300000,'Radiant conversion'],
+ ['Nebula siphon','≋',120000000,1700000,'Nebula compression'],
+ ['Planet cracker','◉',850000000,9500000,'Core resonance'],
+ ['Dyson swarm','✺',6000000000,54000000,'Swarm coordination'],
+ ['Wormhole rig','⟡',45000000000,310000000,'Stable gateways'],
+ ['Pulsar engine','✷',350000000000,1800000000,'Pulse synchronization'],
+ ['Black hole forge','◌',2800000000000,11000000000,'Event horizon taps'],
+ ['Galaxy foundry','✧',24000000000000,68000000000,'Galactic assembly'],
+ ['Dark matter reactor','◆',220000000000000,430000000000,'Invisible catalysts'],
+ ['Quantum duplicator','⚛',2100000000000000,2800000000000,'Quantum entanglement'],
+ ['Universe loom','∞',22000000000000000,19000000000000,'Spacetime weaving'],
+ ['Eternity engine','✵',250000000000000000,135000000000000,'Infinite harmonics']
+];
+advancedEquipment.forEach(([name,icon,base,rate])=>catalog.push({name,icon,base,rate,click:0,desc:`+${rate} stardust per second`}));
+const emptyLevels=()=>catalog.map(()=>0);
+const freshState=()=>({dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),saved:Date.now()});
+const KEY='starforge-v1';let state=freshState();let storageOK=true;
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Number.isFinite(s.dust)&&s.dust>=0&&Number.isFinite(s.total)&&s.total>=s.dust&&Array.isArray(s.owned)&&s.owned.length>=5&&s.owned.length<=catalog.length&&s.owned.every(n=>Number.isInteger(n)&&n>=0&&n<10000)&&Number.isFinite(s.saved))state=s;}catch{}
+state.owned=catalog.map((_,i)=>state.owned[i]||0);
+const labs=['Diamond edges','Drone intelligence','Focused optics','Station overclock','Stellar fusion',...advancedEquipment.map(u=>u[4])];
+state.research=Array.isArray(state.research)&&state.research.length>=5&&state.research.length<=catalog.length&&state.research.every(n=>Number.isInteger(n)&&n>=0&&n<=10)?catalog.map((_,i)=>state.research[i]||0):emptyLevels();
 const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString():Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(n);const multiplier=i=>2**(state.research?.[i]||0);const power=()=>1+state.owned[0]*multiplier(0);const rate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
 function toast(s){$('toast').textContent=s;$('toast').style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.opacity=0,3500)}
 function earn(n){state.dust+=n;state.total+=n}function save(){state.saved=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch{storageOK=false;$('saveStatus').textContent='Saving unavailable'}}
 catalog.forEach((u,i)=>{const b=document.createElement('button');b.className='upgrade';b.innerHTML=`<span class="icon" aria-hidden="true">${u.icon}</span><span class="info"><strong>${u.name}</strong><small>${u.desc}</small></span><span class="price"><span id="cost${i}"></span><small id="owned${i}"></small></span>`;b.onclick=()=>{const c=cost(i);if(state.dust<c)return;state.dust-=c;state.owned[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${u.name} added to your fleet`)};$('upgrades').append(b)});
-const goals=[[100,'First light'],[1000,'Cosmic explorer'],[10000,'Rising empire'],[100000,'Stellar architect'],[1000000,'Galactic legend'],[10000000,'Master of the cosmos']];function render(){$('balance').textContent=fmt(state.dust);$('power').textContent='+'+fmt(power());$('rate').textContent=fmt(rate());[...$('upgrades').children].forEach((b,i)=>{b.disabled=state.dust<cost(i);$('cost'+i).textContent='✦ '+fmt(cost(i));$('owned'+i).textContent='Owned '+state.owned[i];b.setAttribute('aria-label',`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`)});const g=goals.find(g=>state.total<g[0])||goals.at(-1);$('goalTitle').textContent=state.total>=10000000?'Master of the cosmos · All milestones reached!':`${g[1]} · Mine ${fmt(g[0])} stardust`;$('progress').textContent=fmt(Math.min(state.total,g[0]))+' / '+fmt(g[0]);$('fill').style.width=Math.min(100,state.total/g[0]*100)+'%'}
-$('mine').onclick=e=>{const n=power();earn(n);render();const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
-$('reset').onclick=()=>{if(confirm('Reset your stardust and all upgrades?')){state={dust:0,total:0,owned:[0,0,0,0,0],saved:Date.now()};save();render();toast('A fresh universe awaits.')}};
-labs.forEach((name,i)=>{const b=document.createElement('button');b.className='upgrade';b.onclick=()=>{const c=researchCost(i);if(!state.owned[i]||state.dust<c||(state.research?.[i]||0)>=10)return;state.dust-=c;state.research??=[0,0,0,0,0];state.research[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${name}: ${multiplier(i)}× ${catalog[i].name.toLowerCase()} output`)};$('research').append(b)});
+const goals=[[100,'First light'],[1000,'Cosmic explorer'],[10000,'Rising empire'],[100000,'Stellar architect'],[1000000,'Galactic legend'],[10000000,'Master of the cosmos'],[1e8,'Comet commander'],[1e9,'Lunar pioneer'],[1e10,'Solar sovereign'],[1e11,'Nebula navigator'],[1e12,'Planet sculptor'],[1e13,'Dyson dreamer'],[1e14,'Wormhole wanderer'],[1e15,'Pulsar pioneer'],[1e16,'Galaxy guardian'],[1e17,'Quantum voyager'],[1e18,'Universe weaver'],[1e19,'Beyond eternity']];function render(){$('balance').textContent=fmt(state.dust);$('power').textContent='+'+fmt(power());$('rate').textContent=fmt(rate());[...$('upgrades').children].forEach((b,i)=>{b.disabled=state.dust<cost(i);$('cost'+i).textContent='✦ '+fmt(cost(i));$('owned'+i).textContent='Owned '+state.owned[i];b.setAttribute('aria-label',`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`)});const g=goals.find(g=>state.total<g[0])||goals.at(-1);$('goalTitle').textContent=state.total>=goals.at(-1)[0]?'Beyond eternity · All milestones reached!':`${g[1]} · Mine ${fmt(g[0])} stardust`;$('progress').textContent=fmt(Math.min(state.total,g[0]))+' / '+fmt(g[0]);$('fill').style.width=Math.min(100,state.total/g[0]*100)+'%'}
+$('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();earn(n);render();const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
+$('reset').onclick=()=>{if(confirm('Reset your stardust and all upgrades?')){state=freshState();save();render();toast('A fresh universe awaits.')}};
+labs.forEach((name,i)=>{const b=document.createElement('button');b.className='upgrade';b.onclick=()=>{const c=researchCost(i);if(!state.owned[i]||state.dust<c||(state.research?.[i]||0)>=10)return;state.dust-=c;state.research??=emptyLevels();state.research[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${name}: ${multiplier(i)}× ${catalog[i].name.toLowerCase()} output`)};$('research').append(b)});
 const renderBase=render;
 function discoveries(key, owned) {
   const previous=state[key];
@@ -41,5 +62,6 @@ render=function(){
   if(changed)save();
 };
 const offline=Math.min(28800000,Math.max(0,Date.now()-state.saved))/1000*rate();if(offline>=1){earn(offline);toast(`Welcome back! Your fleet mined ${fmt(offline)} stardust.`)}let last=Date.now();render();save();setInterval(()=>{const now=Date.now();earn(rate()*Math.min(28800,Math.max(0,(now-last)/1000)));last=now;render()},100);setInterval(save,5000);window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+
 
 

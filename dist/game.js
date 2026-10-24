@@ -48,6 +48,12 @@ render=function(){
   }
   [...$('upgrades').children].forEach((b,i)=>{
     const known=revealed('discovered',i,cost(i));
+    const production=catalog[i].rate*state.owned[i]*multiplier(i);
+    const share=rate()>0?production/rate()*100:0;
+    const productionHint=i===0?'Click-only equipment: 0% of your stardust per second.':`${share.toLocaleString('en-US',{maximumFractionDigits:2})}% of your total stardust per second (${fmt(production)} / second from all owned).`;
+    b.title=productionHint;
+    // Inner elements also carry the hint so it works on unaffordable buttons.
+    b.querySelectorAll('.icon, .info, .price').forEach(part=>part.title=productionHint);
     b.querySelector('.icon').textContent=known?catalog[i].icon:'?';
     b.querySelector('.info strong').textContent=known?catalog[i].name:'Unknown upgrade';
     b.querySelector('.info small').textContent=known?(i===0?`+${fmt(multiplier(i))} stardust per click each`:`+${fmt(catalog[i].rate*multiplier(i))} stardust per second each`):`Reveals at ${fmt(Math.ceil(cost(i)*3/5))} stardust`;

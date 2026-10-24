@@ -64,14 +64,14 @@ render=function(){
     b.querySelectorAll('.icon, .info, .price').forEach(part=>part.title=productionHint);
     b.querySelector('.icon').textContent=known?catalog[i].icon:'?';
     b.querySelector('.info strong').textContent=known?catalog[i].name:'Unknown upgrade';
-    b.querySelector('.info small').textContent=known?(i===0?`+${fmt(multiplier(i))} stardust per click each`:`+${fmt(catalog[i].rate*multiplier(i))} stardust per second each`):`Reveals at ${fmt(Math.ceil(cost(i)*3/5))} stardust`;
-    b.setAttribute('aria-label',known?`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`:`Unknown upgrade, costs ${cost(i)} stardust, reveals at ${Math.ceil(cost(i)*3/5)} stardust`);
+    b.querySelector('.info small').textContent=known?(i===0?`+${fmt(multiplier(i))} stardust per click each`:`+${fmt(catalog[i].rate*multiplier(i))} stardust per second each`):`???`;
+    b.setAttribute('aria-label',known?`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`:`Unknown upgrade, costs ${cost(i)} stardust`);
   });
   [...$('research').children].forEach((b,i)=>{
     const level=state.research?.[i]||0,max=level>=10,locked=!state.owned[i];
     const known=revealed('researchDiscovered',i,researchCost(i));
     b.disabled=max||locked||state.dust<researchCost(i);
-    b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`Reveals at ${fmt(Math.ceil(researchCost(i)*3/5))} stardust`}</small>${known?`<small>${locked?'Buy matching equipment first':'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
+    b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`???`}</small>${known?`<small>${locked?'Buy matching equipment first':'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
   });
   if($('playerStats').open){
     const exact=n=>Math.floor(n).toLocaleString('en-US');
@@ -153,6 +153,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

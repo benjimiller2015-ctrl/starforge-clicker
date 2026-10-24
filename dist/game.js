@@ -73,6 +73,13 @@ render=function(){
     b.disabled=max||locked||state.dust<researchCost(i);
     b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`???`}</small>${known?`<small>${locked?'Buy matching equipment first':'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
   });
+  // Keep just two mystery boxes beyond the furthest discovery in each shop.
+  for(const [container,key] of [['upgrades','discovered'],['research','researchDiscovered']]){
+    const lastKnown=state[key].reduce((last,known,i)=>known?i:last,-1);
+    [...$(container).children].forEach((button,i)=>{
+      button.style.display=i<=lastKnown+2?'':'none';
+    });
+  }
   if($('playerStats').open){
     const exact=n=>Math.floor(n).toLocaleString('en-US');
     const equipment=state.owned.reduce((a,b)=>a+b,0);

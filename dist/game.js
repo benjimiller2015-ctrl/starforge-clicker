@@ -1,6 +1,6 @@
 const catalog=[{name:'Reinforced pickaxe',icon:'⚒',desc:'+1 stardust per click',base:15,click:1,rate:0},{name:'Mining drone',icon:'⌘',desc:'+1 stardust per second',base:50,click:0,rate:1},{name:'Laser drill',icon:'ϟ',desc:'+8 stardust per second',base:350,click:0,rate:8},{name:'Orbital station',icon:'◎',desc:'+50 stardust per second',base:2000,click:0,rate:50},{name:'Star harvester',icon:'✦',desc:'+300 stardust per second',base:12000,click:0,rate:300}];
 const advancedEquipment=[
- ['Meteor miner','☄',75000,1800,'Gravitational nets'],
+ ['Meteor miner','☄',75000,1800,'Meteor extraction'],
  ['Asteroid refinery','⬡',450000,10000,'Perfect extraction'],
  ['Lunar colony','☾',2800000,55000,'Colony automation'],
  ['Solar collector','☀',18000000,300000,'Radiant conversion'],
@@ -146,6 +146,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

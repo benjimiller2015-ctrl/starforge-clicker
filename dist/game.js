@@ -50,7 +50,7 @@ render=function(){
     const known=revealed('discovered',i,cost(i));
     const production=catalog[i].rate*state.owned[i]*multiplier(i);
     const share=rate()>0?production/rate()*100:0;
-    const productionHint=i===0?'Click-only equipment: 0% of your stardust per second.':`${share.toLocaleString('en-US',{maximumFractionDigits:2})}% of your total stardust per second (${fmt(production)} / second from all owned).`;
+    const productionHint=i===0?'Click-only equipment: 0.00% of your stardust per second.':`${share.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}% of your total stardust per second (${fmt(production)} / second from all owned).`;
     b.title=productionHint;
     // Inner elements also carry the hint so it works on unaffordable buttons.
     b.querySelectorAll('.icon, .info, .price').forEach(part=>part.title=productionHint);
@@ -68,6 +68,7 @@ render=function(){
   if(changed)save();
 };
 const offline=Math.min(28800000,Math.max(0,Date.now()-state.saved))/1000*rate();if(offline>=1){earn(offline);toast(`Welcome back! Your fleet mined ${fmt(offline)} stardust.`)}let last=Date.now();render();save();setInterval(()=>{const now=Date.now();earn(rate()*Math.min(28800,Math.max(0,(now-last)/1000)));last=now;render()},100);setInterval(save,5000);window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+
 
 
 

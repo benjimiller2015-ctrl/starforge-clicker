@@ -67,10 +67,19 @@ render=function(){
   });
   if(changed)save();
 };
-const offline=Math.min(28800000,Math.max(0,Date.now()-state.saved))/1000*rate();if(offline>=1){earn(offline);toast(`Welcome back! Your fleet mined ${fmt(offline)} stardust.`)}let last=Date.now();render();save();setInterval(()=>{const now=Date.now();earn(rate()*Math.min(28800,Math.max(0,(now-last)/1000)));last=now;render()},100);setInterval(save,5000);window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
-
-
-
-
-
-
+// Earn only on live browser ticks, never from saved timestamps or long pauses.
+let last=performance.now();
+render();save();
+setInterval(()=>{
+  const now=performance.now();
+  const elapsed=Math.min(1,Math.max(0,(now-last)/1000));
+  last=now;
+  earn(rate()*elapsed);
+  render();
+},100);
+setInterval(save,5000);
+window.addEventListener('pagehide',save);
+window.addEventListener('pageshow',()=>{last=performance.now()});
+function restartMiningClock(){last=performance.now()}
+document.addEventListener('resume',restartMiningClock);
+document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});

@@ -18,9 +18,10 @@ const advancedEquipment=[
 ];
 advancedEquipment.forEach(([name,icon,base,rate])=>catalog.push({name,icon,base,rate,click:0,desc:`+${rate} stardust per second`}));
 const emptyLevels=()=>catalog.map(()=>0);
-const freshState=()=>({dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),saved:Date.now()});
+const freshState=()=>({dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),stats:{clicks:0,clickDust:0,comets:0,cometDust:0,playSeconds:0},saved:Date.now()});
 const KEY='starforge-v1';let state=freshState();let storageOK=true;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Number.isFinite(s.dust)&&s.dust>=0&&Number.isFinite(s.total)&&s.total>=s.dust&&Array.isArray(s.owned)&&s.owned.length>=5&&s.owned.length<=catalog.length&&s.owned.every(n=>Number.isInteger(n)&&n>=0&&n<10000)&&Number.isFinite(s.saved))state=s;}catch{}
+state.stats=Object.fromEntries(['clicks','clickDust','comets','cometDust','playSeconds'].map(k=>[k,Number.isFinite(state.stats?.[k])&&state.stats[k]>=0?state.stats[k]:0]));
 state.owned=catalog.map((_,i)=>state.owned[i]||0);
 const labs=['Diamond edges','Drone intelligence','Focused optics','Station overclock','Stellar fusion',...advancedEquipment.map(u=>u[4])];
 state.research=Array.isArray(state.research)&&state.research.length>=5&&state.research.length<=catalog.length&&state.research.every(n=>Number.isInteger(n)&&n>=0&&n<=10)?catalog.map((_,i)=>state.research[i]||0):emptyLevels();
@@ -29,7 +30,7 @@ function toast(s){$('toast').textContent=s;$('toast').style.opacity=1;clearTimeo
 function earn(n){state.dust+=n;state.total+=n}function save(){state.saved=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch{storageOK=false;$('saveStatus').textContent='Saving unavailable'}}
 catalog.forEach((u,i)=>{const b=document.createElement('button');b.className='upgrade';b.innerHTML=`<span class="icon" aria-hidden="true">${u.icon}</span><span class="info"><strong>${u.name}</strong><small>${u.desc}</small></span><span class="price"><span id="cost${i}"></span><small id="owned${i}"></small></span>`;b.onclick=()=>{const c=cost(i);if(state.dust<c)return;state.dust-=c;state.owned[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${u.name} added to your fleet`)};$('upgrades').append(b)});
 const goals=[[100,'First light'],[1000,'Cosmic explorer'],[10000,'Rising empire'],[100000,'Stellar architect'],[1000000,'Galactic legend'],[10000000,'Master of the cosmos'],[1e8,'Comet commander'],[1e9,'Lunar pioneer'],[1e10,'Solar sovereign'],[1e11,'Nebula navigator'],[1e12,'Planet sculptor'],[1e13,'Dyson dreamer'],[1e14,'Wormhole wanderer'],[1e15,'Pulsar pioneer'],[1e16,'Galaxy guardian'],[1e17,'Quantum voyager'],[1e18,'Universe weaver'],[1e19,'Beyond eternity']];function render(){$('balance').textContent=fmt(state.dust);$('power').textContent='+'+fmt(power());$('rate').textContent=fmt(rate());[...$('upgrades').children].forEach((b,i)=>{b.disabled=state.dust<cost(i);$('cost'+i).textContent='✦ '+fmt(cost(i));$('owned'+i).textContent='Owned '+state.owned[i];b.setAttribute('aria-label',`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`)});const g=goals.find(g=>state.total<g[0])||goals.at(-1);$('goalTitle').textContent=state.total>=goals.at(-1)[0]?'Beyond eternity · All milestones reached!':`${g[1]} · Mine ${fmt(g[0])} stardust`;$('progress').textContent=fmt(Math.min(state.total,g[0]))+' / '+fmt(g[0]);$('fill').style.width=Math.min(100,state.total/g[0]*100)+'%'}
-$('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();earn(n);render();const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
+$('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();state.stats.clicks++;state.stats.clickDust+=n;earn(n);render();const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
 $('reset').onclick=()=>{if(confirm('Reset your stardust and all upgrades?')){state=freshState();cometBoostUntil=0;hideComet();save();render();toast('A fresh universe awaits.')}};
 labs.forEach((name,i)=>{const b=document.createElement('button');b.className='upgrade';b.onclick=()=>{const c=researchCost(i);if(!state.owned[i]||state.dust<c||(state.research?.[i]||0)>=10)return;state.dust-=c;state.research??=emptyLevels();state.research[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${name}: ${multiplier(i)}× ${catalog[i].name.toLowerCase()} output`)};$('research').append(b)});
 const renderBase=render;
@@ -65,6 +66,30 @@ render=function(){
     b.disabled=max||locked||state.dust<researchCost(i);
     b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`Reveals at ${fmt(Math.ceil(researchCost(i)*3/5))} stardust`}</small>${known?`<small>${locked?'Buy matching equipment first':'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
   });
+  if($('playerStats').open){
+    const exact=n=>Math.floor(n).toLocaleString('en-US');
+    const equipment=state.owned.reduce((a,b)=>a+b,0);
+    const research=state.research.reduce((a,b)=>a+b,0);
+    const seconds=Math.floor(state.stats.playSeconds);
+    const stats=[
+      ['Stardust in your bank',exact(state.dust)],
+      ['Lifetime stardust earned',exact(state.total)],
+      ['Stardust spent',exact(Math.max(0,state.total-state.dust))],
+      ['Asteroid clicks',exact(state.stats.clicks)],
+      ['Stardust from clicks',exact(state.stats.clickDust)],
+      ['Stardust per click',fmt(power())],
+      ['Current stardust per second',fmt(rate())],
+      ['Normal stardust per second',fmt(baseRate())],
+      ['Equipment owned',exact(equipment)],
+      ['Equipment types owned',`${state.owned.filter(n=>n>0).length} / ${catalog.length}`],
+      ['Research levels purchased',`${exact(research)} / ${catalog.length*10}`],
+      ['Golden comets caught',exact(state.stats.comets)],
+      ['Stardust from comets',exact(state.stats.cometDust)],
+      ['Milestones reached',`${goals.filter(g=>state.total>=g[0]).length} / ${goals.length}`],
+      ['Active time played',`${Math.floor(seconds/3600)}h ${Math.floor(seconds/60)%60}m ${seconds%60}s`]
+    ];
+    $('statsList').innerHTML=stats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
+  }
   if(changed)save();
 };
 // Golden comets appear after 2–4 minutes of active play and drift for 30 seconds.
@@ -99,7 +124,7 @@ function updateComet(elapsed){
 comet.onclick=()=>{
   if(comet.hidden)return;
   const reward=baseRate()*600;
-  hideComet();earn(reward);cometBoostUntil=Date.now()+60000;
+  hideComet();state.stats.comets++;state.stats.cometDust+=reward;earn(reward);cometBoostUntil=Date.now()+60000;
   window.starforgeAudio?.upgrade();updateComet(0);save();render();
   toast(`Golden comet! +${fmt(reward)} stardust and 10× mining for 60 seconds.`);
 };
@@ -111,6 +136,7 @@ setInterval(()=>{
   const elapsed=Math.min(1,Math.max(0,(now-last)/1000));
   last=now;
   updateComet(elapsed);
+  state.stats.playSeconds+=elapsed;
   earn(rate()*elapsed);
   render();
 },100);
@@ -120,4 +146,5 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 

@@ -32,6 +32,23 @@ function purchasedTiers(i){
   return state.researchTiers[i];
 }
 catalog.forEach((_,i)=>{state.research[i]=purchasedTiers(i).filter(Boolean).length});const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString('en-US'):Intl.NumberFormat('en',{notation:'compact',minimumFractionDigits:3,maximumFractionDigits:3}).format(n).replace(/([A-Za-z]+)$/,suffix=>' '+(suffix==='K'?'k':suffix));const multiplier=i=>2**(state.research?.[i]||0);const power=()=>1+state.owned[0]*multiplier(0);let cometBoostUntil=0;const cometFactor=()=>Date.now()<cometBoostUntil?10:1;const baseRate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const rate=()=>baseRate()*cometFactor();const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
+state.cometResearch=[0,1].map(i=>state.cometResearch?.[i]===true);
+const cometStudies=[{name:'Golden attraction',catches:7},{name:'Celestial beacon',catches:28}];
+const cometFrequency=()=>2**(state.cometResearch||[]).filter(Boolean).length;
+function cometDelay(){return (120+Math.random()*120)/cometFrequency()}
+const cometResearchPanel=document.createElement('div');
+cometResearchPanel.id='cometResearch';
+$('research').parentElement.append(cometResearchPanel);
+cometStudies.forEach((study,i)=>{
+  const button=document.createElement('button');button.className='upgrade';
+  button.onclick=()=>{
+    if(state.stats.comets<study.catches||state.cometResearch?.[i])return;
+    const before=cometFrequency();state.cometResearch??=[false,false];state.cometResearch[i]=true;
+    cometWait*=before/cometFrequency();
+    window.starforgeAudio?.upgrade();save();render();toast(`${study.name}: golden comets now appear ${cometFrequency()}× as often!`);
+  };
+  cometResearchPanel.append(button);
+});
 const optionsKey='starforge-options-v1';
 let options={animations:true,comets:true};
 try{const saved=JSON.parse(localStorage.getItem(optionsKey));if(saved)for(const k of ['animations','comets'])if(typeof saved[k]==='boolean')options[k]=saved[k]}catch{}
@@ -91,6 +108,10 @@ render=function(){
     b.style.display=available?'':'none';b.disabled=!available||state.dust<price;
     b.title=`Requires ${researchRequirements[tier]} matching equipment (${state.owned[i]} owned)`;
     b.innerHTML=`<span class="icon" aria-hidden="true">${catalog[i].icon}</span><span class="info"><strong>${labs[i]} · Tier ${romanTiers[tier]}</strong><small>Doubles output of every ${catalog[i].name.toLowerCase()}</small><small>Applies to owned and future equipment</small></span><span class="price">✦ ${fmt(price)}</span>`;
+  });  cometStudies.forEach((study,i)=>{
+    const button=cometResearchPanel.children[i];
+    button.style.display=state.stats.comets>=study.catches&&!state.cometResearch?.[i]?'':'none';
+    button.innerHTML=`<span class="icon" aria-hidden="true">☄</span><span class="info"><strong>${study.name} · Tier ${i===0?'I':'II'}</strong><small>Golden comets appear twice as often. Stacks with other comet research.</small><small>Unlocked after ${study.catches} golden comet catches</small></span><span class="price">Free</span>`;
   });  // Keep just two mystery boxes beyond the furthest discovery in each shop.
   for(const [container,key] of [['upgrades','discovered']]){
     const lastKnown=state[key].reduce((last,known,i)=>known?i:last,-1);
@@ -124,6 +145,7 @@ render=function(){
   }
   if($('playerStats').open){
     const purchased=catalog.flatMap((_,i)=>purchasedTiers(i).flatMap((bought,tier)=>bought?[`<li><strong>${labs[i]} · Tier ${romanTiers[tier]}</strong> — doubles ${catalog[i].name.toLowerCase()} output</li>`]:[]));
+    cometStudies.forEach((study,i)=>{if(state.cometResearch?.[i])purchased.push(`<li><strong>${study.name} · Tier ${i===0?'I':'II'}</strong> — golden comets appear twice as often</li>`)});
     $('researchHistory').innerHTML=purchased.length?`<ul>${purchased.join('')}</ul>`:'No research purchased yet.';
   }  if(changed)save();
 };
@@ -136,8 +158,8 @@ document.body.append(comet);
 const boostNotice=document.createElement('div');
 boostNotice.id='cometBoost';boostNotice.hidden=true;boostNotice.setAttribute('role','status');
 document.body.append(boostNotice);
-let cometWait=120+Math.random()*120,cometAge=0;
-function hideComet(){comet.hidden=true;cometAge=0;cometWait=120+Math.random()*120;}
+let cometWait=cometDelay(),cometAge=0;
+function hideComet(){comet.hidden=true;cometAge=0;cometWait=cometDelay();}
 function updateComet(elapsed){
   const remaining=Math.max(0,Math.ceil((cometBoostUntil-Date.now())/1000));
   boostNotice.hidden=remaining===0;
@@ -181,6 +203,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

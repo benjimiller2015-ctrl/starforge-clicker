@@ -71,13 +71,14 @@ render=function(){
   });
   [...$('research').children].forEach((b,i)=>{
     const level=state.research?.[i]||0,max=level>=10,locked=state.owned[i]<researchRequired(i);
-    const known=revealed('researchDiscovered',i,researchCost(i));
+    const known=!locked&&!max;
+    b.style.display=known?'':'none';
     b.disabled=max||locked||state.dust<researchCost(i);
     b.title=max?'All ten research levels purchased':`Requires ${researchRequired(i)} matching equipment (${state.owned[i]} owned)`;
     b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`???`}</small>${known?`<small>${locked?`Requires ${researchRequired(i)} matching equipment (${state.owned[i]} owned)`:'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
   });
   // Keep just two mystery boxes beyond the furthest discovery in each shop.
-  for(const [container,key] of [['upgrades','discovered'],['research','researchDiscovered']]){
+  for(const [container,key] of [['upgrades','discovered']]){
     const lastKnown=state[key].reduce((last,known,i)=>known?i:last,-1);
     [...$(container).children].forEach((button,i)=>{
       button.style.display=i<=lastKnown+2?'':'none';
@@ -107,7 +108,10 @@ render=function(){
     ];
     $('statsList').innerHTML=stats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
   }
-  if(changed)save();
+  if($('playerStats').open){
+    const purchased=state.research.flatMap((levels,i)=>Array.from({length:levels},(_,level)=>`<li><strong>${labs[i]} · Level ${level+1}</strong> — ${catalog[i].name}: ${2**(level+1)}× output</li>`));
+    $('researchHistory').innerHTML=purchased.length?`<ul>${purchased.join('')}</ul>`:'No research purchased yet.';
+  }  if(changed)save();
 };
 // Golden comets appear after 2–4 minutes of active play and drift for 30 seconds.
 const comet=document.createElement('button');
@@ -163,6 +167,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

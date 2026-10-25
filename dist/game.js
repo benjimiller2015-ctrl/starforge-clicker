@@ -25,7 +25,13 @@ state.stats=Object.fromEntries(['clicks','clickDust','comets','cometDust','playS
 state.owned=catalog.map((_,i)=>state.owned[i]||0);
 const labs=['Diamond edges','Drone intelligence','Focused optics','Station overclock','Stellar fusion',...advancedEquipment.map(u=>u[4])];
 state.research=Array.isArray(state.research)&&state.research.length>=5&&state.research.length<=catalog.length&&state.research.every(n=>Number.isInteger(n)&&n>=0&&n<=10)?catalog.map((_,i)=>state.research[i]||0):emptyLevels();
-const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString('en-US'):Intl.NumberFormat('en',{notation:'compact',minimumFractionDigits:3,maximumFractionDigits:3}).format(n).replace(/([A-Za-z]+)$/,suffix=>' '+(suffix==='K'?'k':suffix));const multiplier=i=>2**(state.research?.[i]||0);const power=()=>1+state.owned[0]*multiplier(0);let cometBoostUntil=0;const cometFactor=()=>Date.now()<cometBoostUntil?10:1;const baseRate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const rate=()=>baseRate()*cometFactor();const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
+const romanTiers=['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+function purchasedTiers(i){
+  if(!Array.isArray(state.researchTiers))state.researchTiers=[];
+  if(!Array.isArray(state.researchTiers[i]))state.researchTiers[i]=Array.from({length:10},(_,t)=>t<state.research[i]);
+  return state.researchTiers[i];
+}
+catalog.forEach((_,i)=>{state.research[i]=purchasedTiers(i).filter(Boolean).length});const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString('en-US'):Intl.NumberFormat('en',{notation:'compact',minimumFractionDigits:3,maximumFractionDigits:3}).format(n).replace(/([A-Za-z]+)$/,suffix=>' '+(suffix==='K'?'k':suffix));const multiplier=i=>2**(state.research?.[i]||0);const power=()=>1+state.owned[0]*multiplier(0);let cometBoostUntil=0;const cometFactor=()=>Date.now()<cometBoostUntil?10:1;const baseRate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const rate=()=>baseRate()*cometFactor();const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
 const optionsKey='starforge-options-v1';
 let options={animations:true,comets:true};
 try{const saved=JSON.parse(localStorage.getItem(optionsKey));if(saved)for(const k of ['animations','comets'])if(typeof saved[k]==='boolean')options[k]=saved[k]}catch{}
@@ -41,8 +47,17 @@ $('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();state.stats
 $('reset').onclick=()=>{if(confirm('Permanently wipe all stardust, equipment, research, discoveries, and stats? This cannot be undone.')){state=freshState();cometBoostUntil=0;hideComet();save();render();toast('A fresh universe awaits.')}};
 const researchRequirements=[1,5,10,25,50,75,100,125,150,175];
 const researchRequired=i=>researchRequirements[state.research?.[i]||0]??Infinity;
-labs.forEach((name,i)=>{const b=document.createElement('button');b.className='upgrade';b.onclick=()=>{const c=researchCost(i);if(state.owned[i]<researchRequired(i)||state.dust<c||(state.research?.[i]||0)>=10)return;state.dust-=c;state.research??=emptyLevels();state.research[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${name}: ${multiplier(i)}× ${catalog[i].name.toLowerCase()} output`)};$('research').append(b)});
-const renderBase=render;
+labs.forEach((name,i)=>romanTiers.forEach((roman,tier)=>{
+  const b=document.createElement('button');b.className='upgrade';
+  b.onclick=()=>{
+    const price=catalog[i].base*10*4**tier;
+    if(purchasedTiers(i)[tier]||state.owned[i]<researchRequirements[tier]||state.dust<price)return;
+    state.dust-=price;purchasedTiers(i)[tier]=true;
+    state.research[i]=purchasedTiers(i).filter(Boolean).length;
+    window.starforgeAudio?.upgrade();save();render();toast(`${name} · Tier ${roman} purchased!`);
+  };
+  $('research').append(b);
+}));const renderBase=render;
 function discoveries(key, owned) {
   const previous=state[key];
   state[key]=catalog.map((_,i)=>Boolean(previous?.[i])||owned(i));
@@ -69,15 +84,14 @@ render=function(){
     b.querySelector('.info small').textContent=known?(i===0?`+${fmt(multiplier(i))} stardust per click each`:`+${fmt(catalog[i].rate*multiplier(i))} stardust per second each`):`???`;
     b.setAttribute('aria-label',known?`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`:`Unknown upgrade, costs ${cost(i)} stardust`);
   });
-  [...$('research').children].forEach((b,i)=>{
-    const level=state.research?.[i]||0,max=level>=10,locked=state.owned[i]<researchRequired(i);
-    const known=!locked&&!max;
-    b.style.display=known?'':'none';
-    b.disabled=max||locked||state.dust<researchCost(i);
-    b.title=max?'All ten research levels purchased':`Requires ${researchRequired(i)} matching equipment (${state.owned[i]} owned)`;
-    b.innerHTML=`<span class="icon" aria-hidden="true">${known?catalog[i].icon:'?'}</span><span class="info"><strong>${known?labs[i]:'Unknown research'}</strong><small>${known?`${catalog[i].name}: ${multiplier(i)}×${max?' (maximum)':' → '+multiplier(i)*2+'× output'}`:`???`}</small>${known?`<small>${locked?`Requires ${researchRequired(i)} matching equipment (${state.owned[i]} owned)`:'Applies to all owned and future equipment'}</small>`:''}</span><span class="price">${max?'Max level':'✦ '+fmt(researchCost(i))}<small>Level ${level} / 10</small></span>`;
-  });
-  // Keep just two mystery boxes beyond the furthest discovery in each shop.
+  [...$('research').children].forEach((b,index)=>{
+    const i=Math.floor(index/10),tier=index%10;
+    const available=state.owned[i]>=researchRequirements[tier]&&!purchasedTiers(i)[tier];
+    const price=catalog[i].base*10*4**tier;
+    b.style.display=available?'':'none';b.disabled=!available||state.dust<price;
+    b.title=`Requires ${researchRequirements[tier]} matching equipment (${state.owned[i]} owned)`;
+    b.innerHTML=`<span class="icon" aria-hidden="true">${catalog[i].icon}</span><span class="info"><strong>${labs[i]} · Tier ${romanTiers[tier]}</strong><small>Doubles output of every ${catalog[i].name.toLowerCase()}</small><small>Applies to owned and future equipment</small></span><span class="price">✦ ${fmt(price)}</span>`;
+  });  // Keep just two mystery boxes beyond the furthest discovery in each shop.
   for(const [container,key] of [['upgrades','discovered']]){
     const lastKnown=state[key].reduce((last,known,i)=>known?i:last,-1);
     [...$(container).children].forEach((button,i)=>{
@@ -109,7 +123,7 @@ render=function(){
     $('statsList').innerHTML=stats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
   }
   if($('playerStats').open){
-    const purchased=state.research.flatMap((levels,i)=>Array.from({length:levels},(_,level)=>`<li><strong>${labs[i]} · Level ${level+1}</strong> — ${catalog[i].name}: ${2**(level+1)}× output</li>`));
+    const purchased=catalog.flatMap((_,i)=>purchasedTiers(i).flatMap((bought,tier)=>bought?[`<li><strong>${labs[i]} · Tier ${romanTiers[tier]}</strong> — doubles ${catalog[i].name.toLowerCase()} output</li>`]:[]));
     $('researchHistory').innerHTML=purchased.length?`<ul>${purchased.join('')}</ul>`:'No research purchased yet.';
   }  if(changed)save();
 };
@@ -167,6 +181,8 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
+
 
 
 

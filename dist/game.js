@@ -18,7 +18,9 @@ const advancedEquipment=[
 ];
 advancedEquipment.forEach(([name,icon,base,rate])=>catalog.push({name,icon,base,rate,click:0,desc:`+${rate} stardust per second`}));
 const emptyLevels=()=>catalog.map(()=>0);
-const freshState=()=>({dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),stats:{clicks:0,clickDust:0,comets:0,cometDust:0,playSeconds:0},saved:Date.now()});
+const mineNames=['Nova','Orion','Luna','Cosmo','Stella','Atlas','Aurora','Vega','Juno','Apollo'];
+const randomMineOwner=()=>mineNames[Math.floor(Math.random()*mineNames.length)];
+const freshState=()=>({mineOwner:randomMineOwner(),dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),stats:{clicks:0,clickDust:0,comets:0,cometDust:0,playSeconds:0},saved:Date.now()});
 const KEY='starforge-v1';let state=freshState();let storageOK=true;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Number.isFinite(s.dust)&&s.dust>=0&&Number.isFinite(s.total)&&s.total>=s.dust&&Array.isArray(s.owned)&&s.owned.length>=5&&s.owned.length<=catalog.length&&s.owned.every(n=>Number.isInteger(n)&&n>=0&&n<10000)&&Number.isFinite(s.saved))state=s;}catch{}
 state.stats=Object.fromEntries(['clicks','clickDust','comets','cometDust','playSeconds'].map(k=>[k,Number.isFinite(state.stats?.[k])&&state.stats[k]>=0?state.stats[k]:0]));
@@ -49,7 +51,21 @@ cometStudies.forEach((study,i)=>{
   };
   cometResearchPanel.append(button);
 });
-const optionsKey='starforge-options-v1';
+function cleanMineOwner(value){
+  return String(value).replace(/[\u0000-\u001f\u007f]/g,'').trim().replace(/['’]s mine$/i,'').trim().slice(0,30);
+}
+state.mineOwner=typeof state.mineOwner==='string'&&cleanMineOwner(state.mineOwner)?cleanMineOwner(state.mineOwner):randomMineOwner();
+function updateMineName(){
+  $('mineName').textContent=state.mineOwner+"'s mine";
+}
+$('mineName').onclick=()=>{
+  const entered=prompt("Choose the first part of your mine name (up to 30 characters). It will always end in 's mine.",state.mineOwner);
+  if(entered===null)return;
+  const name=cleanMineOwner(entered);
+  if(!name){toast('Please enter a name for your mine.');return;}
+  state.mineOwner=name;updateMineName();save();
+};
+updateMineName();const optionsKey='starforge-options-v1';
 let options={animations:true,comets:true};
 try{const saved=JSON.parse(localStorage.getItem(optionsKey));if(saved)for(const k of ['animations','comets'])if(typeof saved[k]==='boolean')options[k]=saved[k]}catch{}
 for(const k of ['animations','comets']){
@@ -61,7 +77,7 @@ function earn(n){state.dust+=n;state.total+=n}function save(){state.saved=Date.n
 catalog.forEach((u,i)=>{const b=document.createElement('button');b.className='upgrade';b.innerHTML=`<span class="icon" aria-hidden="true">${u.icon}</span><span class="info"><strong>${u.name}</strong><small>${u.desc}</small></span><span class="price"><span id="cost${i}"></span><small id="owned${i}"></small></span>`;b.onclick=()=>{const c=cost(i);if(state.dust<c)return;state.dust-=c;state.owned[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${u.name} added to your fleet`)};$('upgrades').append(b)});
 const goals=[[100,'First light'],[1000,'Cosmic explorer'],[10000,'Rising empire'],[100000,'Stellar architect'],[1000000,'Galactic legend'],[10000000,'Master of the cosmos'],[1e8,'Comet commander'],[1e9,'Lunar pioneer'],[1e10,'Solar sovereign'],[1e11,'Nebula navigator'],[1e12,'Planet sculptor'],[1e13,'Dyson dreamer'],[1e14,'Wormhole wanderer'],[1e15,'Pulsar pioneer'],[1e16,'Galaxy guardian'],[1e17,'Quantum voyager'],[1e18,'Universe weaver'],[1e19,'Beyond eternity']];function render(){$('balance').textContent=fmt(state.dust);$('power').textContent='+'+fmt(power());$('rate').textContent=fmt(rate());[...$('upgrades').children].forEach((b,i)=>{b.disabled=state.dust<cost(i);$('cost'+i).textContent='✦ '+fmt(cost(i));$('owned'+i).textContent='Owned '+state.owned[i];b.setAttribute('aria-label',`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`)});const g=goals.find(g=>state.total<g[0])||goals.at(-1);$('goalTitle').textContent=state.total>=goals.at(-1)[0]?'Beyond eternity · All milestones reached!':`${g[1]} · Mine ${fmt(g[0])} stardust`;$('progress').textContent=fmt(Math.min(state.total,g[0]))+' / '+fmt(g[0]);$('fill').style.width=Math.min(100,state.total/g[0]*100)+'%'}
 $('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();state.stats.clicks++;state.stats.clickDust+=n;earn(n);render();if(!options.animations)return;const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
-$('reset').onclick=()=>{if(confirm('Permanently wipe all stardust, equipment, research, discoveries, and stats? This cannot be undone.')){state=freshState();cometBoostUntil=0;hideComet();save();render();toast('A fresh universe awaits.')}};
+$('reset').onclick=()=>{if(confirm('Permanently wipe all stardust, equipment, research, discoveries, and stats? This cannot be undone.')){state=freshState();updateMineName();cometBoostUntil=0;hideComet();save();render();toast('A fresh universe awaits.')}};
 const researchRequirements=[1,5,10,25,50,75,100,125,150,175];
 const researchRequired=i=>researchRequirements[state.research?.[i]||0]??Infinity;
 labs.forEach((name,i)=>romanTiers.forEach((roman,tier)=>{
@@ -203,6 +219,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

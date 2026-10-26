@@ -38,7 +38,8 @@ catalog.forEach((_,i)=>{state.research[i]=purchasedTiers(i).filter(Boolean).leng
 state.cometResearch=[0,1].map(i=>state.cometResearch?.[i]===true);
 const cometStudies=[{name:'Golden attraction',catches:7},{name:'Celestial beacon',catches:28}];
 const cometFrequency=()=>2**(state.cometResearch||[]).filter(Boolean).length;
-function cometDelay(){return (120+Math.random()*120)/cometFrequency()}
+const superLucky=()=>state.mineOwner.trim().toLowerCase()==='super lucky';
+function cometDelay(){return superLucky()?5:(120+Math.random()*120)/cometFrequency()}
 const cometResearchPanel=document.createElement('div');
 cometResearchPanel.id='cometResearch';
 $('research').parentElement.append(cometResearchPanel);
@@ -47,7 +48,7 @@ cometStudies.forEach((study,i)=>{
   button.onclick=()=>{
     if(state.stats.comets<study.catches||state.cometResearch?.[i])return;
     const before=cometFrequency();state.cometResearch??=[false,false];state.cometResearch[i]=true;
-    cometWait*=before/cometFrequency();
+    if(!superLucky())cometWait*=before/cometFrequency();
     window.starforgeAudio?.upgrade();save();render();toast(`${study.name}: golden comets now appear ${cometFrequency()}× as often!`);
   };
   cometResearchPanel.append(button);
@@ -64,7 +65,7 @@ $('mineName').onclick=()=>{
   if(entered===null)return;
   const name=cleanMineOwner(entered);
   if(!name){toast('Please enter a name for your mine.');return;}
-  state.mineOwner=name;updateMineName();save();
+  const wasLucky=superLucky();state.mineOwner=name;if(wasLucky!==superLucky())hideComet();updateMineName();save();
 };
 updateMineName();const optionsKey='starforge-options-v1';
 let options={animations:true,comets:true};
@@ -183,6 +184,16 @@ function updateComet(elapsed){
   const label=`Golden comet · 10× mining · ${remaining}s left`;
   if(boostNotice.textContent!==label)boostNotice.textContent=label;
   if(document.hidden||!options.comets)return;
+  if(superLucky()){
+    cometWait-=elapsed;
+    if(cometWait<=0){
+      comet.hidden=false;cometAge=0;cometWait=5;
+      comet.style.top=(20+Math.random()*45)+'vh';comet.style.left='-100px';
+    }else if(!comet.hidden){
+      cometAge+=elapsed;comet.style.left=`calc(${cometAge/30*120}vw - 100px)`;
+    }
+    return;
+  }
   if(comet.hidden){
     cometWait-=elapsed;
     if(cometWait<=0 && remaining===0){
@@ -220,6 +231,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

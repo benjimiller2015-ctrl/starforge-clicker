@@ -179,7 +179,7 @@ document.body.append(boostNotice);
 let cometWait=cometDelay(),cometAge=0;
 function hideComet(){comet.hidden=true;cometAge=0;cometWait=cometDelay();}
 function updateComet(elapsed){
-  $('mine').classList.toggle('frenzy',cometFactor()>1);
+  $('mine').classList.toggle('frenzy',cometFactor()>1||Date.now()<clickBoostUntil);
   const remaining=Math.max(0,Math.ceil((cometBoostUntil-Date.now())/1000));
   const clickRemaining=Math.max(0,Math.ceil((clickBoostUntil-Date.now())/1000));
   boostNotice.hidden=remaining===0&&clickRemaining===0;
@@ -207,6 +207,19 @@ function updateComet(elapsed){
     if(cometAge>=30)hideComet();
   }
 }
+const rewardBanner=document.createElement('div');rewardBanner.id='rewardBanner';rewardBanner.hidden=true;
+rewardBanner.setAttribute('role','status');rewardBanner.setAttribute('aria-live','polite');
+rewardBanner.innerHTML='<span class="reward-star" aria-hidden="true">✦</span><div><strong id="rewardHeading"></strong><p id="rewardDescription"></p></div><button type="button" aria-label="Dismiss reward announcement">×</button>';
+document.body.append(rewardBanner);
+let rewardBannerTimer;
+rewardBanner.querySelector('button').onclick=()=>{rewardBanner.hidden=true;clearTimeout(rewardBannerTimer)};
+function announceReward(reward,message){
+  $('rewardHeading').textContent=reward.name.toUpperCase()+'!';
+  $('rewardDescription').textContent=message;
+  rewardBanner.hidden=false;
+  clearTimeout(rewardBannerTimer);
+  rewardBannerTimer=setTimeout(()=>{rewardBanner.hidden=true},6500);
+}
 const cometRewards=[
   {name:'Mining frenzy',kind:'mining',factor:10,seconds:60},
   {name:'Stardust windfall',kind:'instant',seconds:600},
@@ -231,7 +244,7 @@ comet.onclick=()=>{
   if(comet.hidden)return;
   hideComet();state.stats.comets++;
   const reward=cometRewards[Math.floor(Math.random()*cometRewards.length)];
-  const message=claimCometReward(reward);
+  const message=claimCometReward(reward);announceReward(reward,message);
   window.starforgeAudio?.upgrade();updateComet(0);save();render();toast(message);
 };// Earn only on live browser ticks, never from saved timestamps or long pauses.
 let last=performance.now();
@@ -251,6 +264,8 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
+
 
 
 

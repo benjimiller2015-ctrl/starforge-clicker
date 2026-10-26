@@ -18,8 +18,9 @@ const advancedEquipment=[
 ];
 advancedEquipment.forEach(([name,icon,base,rate])=>catalog.push({name,icon,base,rate,click:0,desc:`+${rate} stardust per second`}));
 const emptyLevels=()=>catalog.map(()=>0);
-const mineNames=['Nova','Orion','Luna','Cosmo','Stella','Atlas','Aurora','Vega','Juno','Apollo'];
-const randomMineOwner=()=>mineNames[Math.floor(Math.random()*mineNames.length)];
+const mineAdjectives=['Goofy','Sleepy','Wobbly','Cosmic','Sneaky','Bouncy','Sparkly','Dizzy','Silly','Grumpy','Jolly','Fuzzy'];
+const mineCreatures=['Pirate','Space Sloth','Moon Goblin','Robot Duck','Star Wizard','Alien Penguin','Comet Cowboy','Astro Hamster','Space Potato','Rocket Raccoon','Disco Dragon','Meteor Monkey'];
+const randomMineOwner=()=>mineAdjectives[Math.floor(Math.random()*mineAdjectives.length)]+' '+mineCreatures[Math.floor(Math.random()*mineCreatures.length)];
 const freshState=()=>({mineOwner:randomMineOwner(),dust:0,total:0,owned:emptyLevels(),research:emptyLevels(),stats:{clicks:0,clickDust:0,comets:0,cometDust:0,playSeconds:0},saved:Date.now()});
 const KEY='starforge-v1';let state=freshState();let storageOK=true;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Number.isFinite(s.dust)&&s.dust>=0&&Number.isFinite(s.total)&&s.total>=s.dust&&Array.isArray(s.owned)&&s.owned.length>=5&&s.owned.length<=catalog.length&&s.owned.every(n=>Number.isInteger(n)&&n>=0&&n<10000)&&Number.isFinite(s.saved))state=s;}catch{}
@@ -219,6 +220,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

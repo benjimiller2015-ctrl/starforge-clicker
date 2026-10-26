@@ -52,14 +52,14 @@ cometStudies.forEach((study,i)=>{
   cometResearchPanel.append(button);
 });
 function cleanMineOwner(value){
-  return String(value).replace(/[\u0000-\u001f\u007f]/g,'').trim().replace(/['’]s mine$/i,'').trim().slice(0,30);
+  return String(value).replace(/[\u0000-\u001f\u007f]/g,'').trim().replace(/['’]s (?:asteroid )?mine$/i,'').trim().slice(0,30);
 }
 state.mineOwner=typeof state.mineOwner==='string'&&cleanMineOwner(state.mineOwner)?cleanMineOwner(state.mineOwner):randomMineOwner();
 function updateMineName(){
-  $('mineName').textContent=state.mineOwner+"'s mine";
+  $('mineName').textContent=state.mineOwner+"'s asteroid mine";
 }
 $('mineName').onclick=()=>{
-  const entered=prompt("Choose the first part of your mine name (up to 30 characters). It will always end in 's mine.",state.mineOwner);
+  const entered=prompt("Choose the first part of your mine name (up to 30 characters). It will always end in 's asteroid mine.",state.mineOwner);
   if(entered===null)return;
   const name=cleanMineOwner(entered);
   if(!name){toast('Please enter a name for your mine.');return;}
@@ -219,6 +219,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

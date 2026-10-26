@@ -34,7 +34,7 @@ function purchasedTiers(i){
   if(!Array.isArray(state.researchTiers[i]))state.researchTiers[i]=Array.from({length:10},(_,t)=>t<state.research[i]);
   return state.researchTiers[i];
 }
-catalog.forEach((_,i)=>{state.research[i]=purchasedTiers(i).filter(Boolean).length});const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString('en-US'):Intl.NumberFormat('en',{notation:'compact',minimumFractionDigits:3,maximumFractionDigits:3}).format(n).replace(/([A-Za-z]+)$/,suffix=>' '+(suffix==='K'?'k':suffix));const multiplier=i=>2**(state.research?.[i]||0);const power=()=>1+state.owned[0]*multiplier(0);let cometBoostUntil=0;const cometFactor=()=>Date.now()<cometBoostUntil?10:1;const baseRate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const rate=()=>baseRate()*cometFactor();const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
+catalog.forEach((_,i)=>{state.research[i]=purchasedTiers(i).filter(Boolean).length});const $=id=>document.getElementById(id);const fmt=n=>n<1000?Math.floor(n).toLocaleString('en-US'):Intl.NumberFormat('en',{notation:'compact',minimumFractionDigits:3,maximumFractionDigits:3}).format(n).replace(/([A-Za-z]+)$/,suffix=>' '+(suffix==='K'?'k':suffix));const multiplier=i=>2**(state.research?.[i]||0);let clickBoostUntil=0,clickBoostValue=1,miningBoostValue=10;const basePower=()=>1+state.owned[0]*multiplier(0);const power=()=>basePower()*(Date.now()<clickBoostUntil?clickBoostValue:1);let cometBoostUntil=0;const cometFactor=()=>Date.now()<cometBoostUntil?miningBoostValue:1;const baseRate=()=>catalog.reduce((n,u,i)=>n+u.rate*state.owned[i]*multiplier(i),0);const rate=()=>baseRate()*cometFactor();const cost=i=>Math.ceil(catalog[i].base*1.16**state.owned[i]);const researchCost=i=>catalog[i].base*10*4**(state.research?.[i]||0);let toastTimer;
 state.cometResearch=[0,1].map(i=>state.cometResearch?.[i]===true);
 const cometStudies=[{name:'Golden attraction',catches:7},{name:'Celestial beacon',catches:28}];
 const cometFrequency=()=>2**(state.cometResearch||[]).filter(Boolean).length;
@@ -79,7 +79,7 @@ function earn(n){state.dust+=n;state.total+=n}function save(){state.saved=Date.n
 catalog.forEach((u,i)=>{const b=document.createElement('button');b.className='upgrade';b.innerHTML=`<span class="icon" aria-hidden="true">${u.icon}</span><span class="info"><strong>${u.name}</strong><small>${u.desc}</small></span><span class="price"><span id="cost${i}"></span><small id="owned${i}"></small></span>`;b.onclick=()=>{const c=cost(i);if(state.dust<c)return;state.dust-=c;state.owned[i]++;window.starforgeAudio?.upgrade();save();render();toast(`${u.name} added to your fleet`)};$('upgrades').append(b)});
 const goals=[[100,'First light'],[1000,'Cosmic explorer'],[10000,'Rising empire'],[100000,'Stellar architect'],[1000000,'Galactic legend'],[10000000,'Master of the cosmos'],[1e8,'Comet commander'],[1e9,'Lunar pioneer'],[1e10,'Solar sovereign'],[1e11,'Nebula navigator'],[1e12,'Planet sculptor'],[1e13,'Dyson dreamer'],[1e14,'Wormhole wanderer'],[1e15,'Pulsar pioneer'],[1e16,'Galaxy guardian'],[1e17,'Quantum voyager'],[1e18,'Universe weaver'],[1e19,'Beyond eternity']];function render(){$('balance').textContent=fmt(state.dust);$('power').textContent='+'+fmt(power());$('rate').textContent=fmt(rate());[...$('upgrades').children].forEach((b,i)=>{b.disabled=state.dust<cost(i);$('cost'+i).textContent='✦ '+fmt(cost(i));$('owned'+i).textContent='Owned '+state.owned[i];b.setAttribute('aria-label',`${catalog[i].name}, costs ${cost(i)} stardust, owned ${state.owned[i]}`)});const g=goals.find(g=>state.total<g[0])||goals.at(-1);$('goalTitle').textContent=state.total>=goals.at(-1)[0]?'Beyond eternity · All milestones reached!':`${g[1]} · Mine ${fmt(g[0])} stardust`;$('progress').textContent=fmt(Math.min(state.total,g[0]))+' / '+fmt(g[0]);$('fill').style.width=Math.min(100,state.total/g[0]*100)+'%'}
 $('mine').onclick=e=>{window.starforgeAudio?.click();const n=power();state.stats.clicks++;state.stats.clickDust+=n;earn(n);render();if(!options.animations)return;const p=document.createElement('span');p.className='pop';p.textContent='+'+fmt(n);const r=$('mine').getBoundingClientRect();p.style.left=(e.clientX||r.x+r.width/2)+'px';p.style.top=(e.clientY||r.y+r.height/2)+'px';document.body.append(p);setTimeout(()=>p.remove(),850)};
-$('reset').onclick=()=>{if(confirm('Permanently wipe all stardust, equipment, research, discoveries, and stats? This cannot be undone.')){state=freshState();updateMineName();cometBoostUntil=0;$('mine').classList.remove('frenzy');hideComet();save();render();toast('A fresh universe awaits.')}};
+$('reset').onclick=()=>{if(confirm('Permanently wipe all stardust, equipment, research, discoveries, and stats? This cannot be undone.')){state=freshState();updateMineName();cometBoostUntil=0;clickBoostUntil=0;$('mine').classList.remove('frenzy');hideComet();save();render();toast('A fresh universe awaits.')}};
 const researchRequirements=[1,5,10,25,50,75,100,125,150,175];
 const researchRequired=i=>researchRequirements[state.research?.[i]||0]??Infinity;
 labs.forEach((name,i)=>romanTiers.forEach((roman,tier)=>{
@@ -170,7 +170,7 @@ render=function(){
 // Golden comets appear after 2–4 minutes of active play and drift for 30 seconds.
 const comet=document.createElement('button');
 comet.id='goldenComet';comet.type='button';comet.hidden=true;
-comet.setAttribute('aria-label','Catch golden comet: 10 minutes of normal earnings and 10 times mining for one minute');
+comet.setAttribute('aria-label','Catch golden comet for one random reward');
 comet.innerHTML='<span aria-hidden="true">☄</span><small>Catch me!</small>';
 document.body.append(comet);
 const boostNotice=document.createElement('div');
@@ -181,10 +181,10 @@ function hideComet(){comet.hidden=true;cometAge=0;cometWait=cometDelay();}
 function updateComet(elapsed){
   $('mine').classList.toggle('frenzy',cometFactor()>1);
   const remaining=Math.max(0,Math.ceil((cometBoostUntil-Date.now())/1000));
-  boostNotice.hidden=remaining===0;
-  const label=`Golden comet · 10× mining · ${remaining}s left`;
-  if(boostNotice.textContent!==label)boostNotice.textContent=label;
-  if(document.hidden||!options.comets)return;
+  const clickRemaining=Math.max(0,Math.ceil((clickBoostUntil-Date.now())/1000));
+  boostNotice.hidden=remaining===0&&clickRemaining===0;
+  const label=[remaining?`${miningBoostValue}× mining · ${remaining}s left`:'',clickRemaining?`${clickBoostValue}× clicks · ${clickRemaining}s left`:''].filter(Boolean).join(' | ');
+  if(boostNotice.textContent!==label)boostNotice.textContent=label;  if(document.hidden||!options.comets)return;
   if(superLucky()){
     cometWait-=elapsed;
     if(cometWait<=0){
@@ -207,14 +207,33 @@ function updateComet(elapsed){
     if(cometAge>=30)hideComet();
   }
 }
+const cometRewards=[
+  {name:'Mining frenzy',kind:'mining',factor:10,seconds:60},
+  {name:'Stardust windfall',kind:'instant',seconds:600},
+  {name:'Click frenzy',kind:'click',factor:100,seconds:15},
+  {name:'Power surge',kind:'mining',factor:25,seconds:15},
+  {name:'Lucky fingers',kind:'click',factor:10,seconds:60}
+];
+function claimCometReward(reward){
+  if(reward.kind==='instant'){
+    const amount=Math.max(baseRate()*reward.seconds,basePower()*100);
+    state.stats.cometDust+=amount;earn(amount);
+    return `${reward.name}! +${fmt(amount)} stardust.`;
+  }
+  if(reward.kind==='mining'){
+    miningBoostValue=reward.factor;cometBoostUntil=Date.now()+reward.seconds*1000;
+  }else{
+    clickBoostValue=reward.factor;clickBoostUntil=Date.now()+reward.seconds*1000;
+  }
+  return `${reward.name}! ${reward.factor}× ${reward.kind==='mining'?'mining':'click power'} for ${reward.seconds} seconds.`;
+}
 comet.onclick=()=>{
   if(comet.hidden)return;
-  const reward=baseRate()*600;
-  hideComet();state.stats.comets++;state.stats.cometDust+=reward;earn(reward);cometBoostUntil=Date.now()+60000;
-  window.starforgeAudio?.upgrade();updateComet(0);save();render();
-  toast(`Golden comet! +${fmt(reward)} stardust and 10× mining for 60 seconds.`);
-};
-// Earn only on live browser ticks, never from saved timestamps or long pauses.
+  hideComet();state.stats.comets++;
+  const reward=cometRewards[Math.floor(Math.random()*cometRewards.length)];
+  const message=claimCometReward(reward);
+  window.starforgeAudio?.upgrade();updateComet(0);save();render();toast(message);
+};// Earn only on live browser ticks, never from saved timestamps or long pauses.
 let last=performance.now();
 render();save();
 setInterval(()=>{
@@ -232,6 +251,7 @@ window.addEventListener('pageshow',()=>{last=performance.now()});
 function restartMiningClock(){last=performance.now()}
 document.addEventListener('resume',restartMiningClock);
 document.addEventListener('visibilitychange',()=>{restartMiningClock();if(document.hidden)save()});
+
 
 
 

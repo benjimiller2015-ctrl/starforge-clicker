@@ -1,3 +1,4 @@
 .openai/
 outputs/
 *.tar.gz
+node_modules/
